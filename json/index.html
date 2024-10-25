@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>JSON Editor Online</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.5.4/jsoneditor.min.css">
+  <style>
+    .jsoneditor {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+    .container {
+      position: relative;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    .delete-button, .save-button {
+      position: absolute;
+      top: 14px; /* 向上移动20像素 */
+      color: #fff; /* 文本颜色设置为白色 */
+      border: none; /* 去掉边框 */
+      padding: 5px 10px;
+      cursor: pointer;
+      z-index: 1; /* 确保在上方显示 */
+    }
+    .delete-button {
+      right: 100px; /* 向右移动48像素 */
+      background: red; /* 恢复红色背景 */
+    }
+    .save-button {
+      right: 150px; /* 在删除按钮的左边，并向右移动50像素 */
+      background: blue; /* 恢复蓝色背景 */
+    }
+    .add-button-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .add-button-container button {
+      background: none; /* 去除背景颜色 */
+      border: 1px solid #ccc; /* 添加边框 */
+      padding: 5px 10px; /* 设置内边距 */
+      cursor: pointer; /* 鼠标悬停样式 */
+    }
+    .title {
+      text-align: center; /* 水平居中显示 */
+      font-size: 24px; /* 调整字体大小 */
+      margin-bottom: 20px; /* 增加底部间距 */
+    }
+  </style>
+</head>
+<body>
+  <h1 class="title">JSON Editor Online</h1>
+
+  <div id="editors-container"></div>
+
+  <div class="add-button-container">
+    <button id="add-json-editor">Add JSON Editor</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.5.4/jsoneditor.min.js"></script>
+  <script>
+    // 创建 JSONEditor 实例的函数
+    function createJsonEditor(container, initialJson) {
+      const options = {
+        modes: ['code', 'text', 'tree', 'view'], // 支持的模式
+        mode: 'code', // 默认模式
+        onChangeText: function() {
+          console.log(`JSON 发生变化`);
+        },
+        onModeChange: function(newMode, oldMode) {
+          console.log(`模式从 ${oldMode} 更改为 ${newMode}`);
+        },
+        onError: function(err) {
+          console.error('发生错误:', err);
+        }
+      };
+
+      const editor = new JSONEditor(container, options);
+
+      // 设置初始 JSON 数据（如果提供）
+      if (initialJson) {
+        editor.set(initialJson);
+      }
+
+      return editor;
+    }
+
+    // 获取当前编辑器的数量
+    function getEditorCount() {
+      return document.querySelectorAll('.container').length;
+    }
+
+    // 添加一个新的 JSON 编辑器
+    function addJsonEditor() {
+      const container = document.getElementById('editors-container');
+      const editorContainer = document.createElement('div');
+      editorContainer.className = 'container';
+
+      // 创建删除按钮
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'delete-button';
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = function() {
+        const index = Array.from(container.children).indexOf(editorContainer);
+        container.removeChild(editorContainer);
+        // 删除后重新编号所有后续的编辑器
+        for (let i = index; i < container.children.length; i++) {
+          const nextEditorDiv = container.children[i].querySelector('.jsoneditor');
+          localStorage.removeItem(`jsoneditor${i}`);
+          localStorage.setItem(`jsoneditor${i}`, localStorage.getItem(`jsoneditor${i + 1}`));
+          localStorage.removeItem(`jsoneditor${i + 1}`);
+          nextEditorDiv.id = `jsoneditor${i}`;
+        }
+      };
+      editorContainer.appendChild(deleteButton);
+
+      // 创建保存按钮
+      const saveButton = document.createElement('button');
+      saveButton.className = 'save-button';
+      saveButton.textContent = 'Save';
+      editorContainer.appendChild(saveButton);
+
+      // 创建 JSON 编辑器容器
+      const editorIndex = getEditorCount(); // 获取当前编辑器的数量
+      const editorDiv = document.createElement('div');
+      editorDiv.id = `jsoneditor${editorIndex}`; // 使用编辑器的下标作为 ID
+      editorContainer.appendChild(editorDiv);
+
+      // 初始化 JSON 编辑器
+      let initialJson = {
+        "name": "New JSON",
+        "data": "Example"
+      };
+
+      // 从 localStorage 中恢复数据
+      const savedJson = localStorage.getItem(`jsoneditor${editorIndex}`);
+      if (savedJson) {
+        initialJson = JSON.parse(savedJson);
+      }
+
+      const editor = createJsonEditor(editorDiv, initialJson); // 创建 JSONEditor 实例
+
+      // 绑定保存按钮的点击事件
+      saveButton.onclick = function() {
+        try {
+          const json = editor.get(); // 获取当前编辑器中的 JSON 数据
+          localStorage.setItem(`jsoneditor${editorIndex}`, JSON.stringify(json));
+          alert('Success'); // 保存成功提示
+        } catch (error) {
+          console.error('保存失败:', error);
+          alert('Failed'); // 保存失败提示
+        }
+      };
+
+      // 将新的编辑器容器添加到页面
+      container.appendChild(editorContainer);
+    }
+
+    // 绑定添加按钮事件
+    document.getElementById('add-json-editor').onclick = addJsonEditor;
+
+    // 初始化第一个 JSON 编辑器
+    addJsonEditor();
+  </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AES Encryption and Decryption</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        textarea, select, input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AES Encryption and Decryption</h1>
+        <form id="aesForm">
+            <div class="form-group">
+                <label for="inputData">Input Data (Plaintext or Decrypted):</label>
+                <textarea id="inputData" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="outputData">Output Data (Encrypted):</label>
+                <textarea id="outputData" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="key">Key (16 or 32 bytes):</label>
+                <input type="text" id="key" placeholder="Enter key (16 or 32 bytes)">
+            </div>
+            <div class="form-group">
+                <label for="iv">IV (16 bytes, only for CBC, CFB, CTR, OFB):</label>
+                <input type="text" id="iv" placeholder="Enter IV (16 bytes)">
+            </div>
+            <div class="form-group">
+                <label for="mode">Mode:</label>
+                <select id="mode">
+                    <option value="CBC">CBC</option>
+                    <option value="CFB">CFB</option>
+                    <option value="CTR">CTR</option>
+                    <option value="OFB">OFB</option>
+                    <option value="ECB">ECB</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="padding">Padding:</label>
+                <select id="padding">
+                    <option value="Pkcs7">PKCS7</option>
+                    <option value="Iso7816">Iso7816 (ISO/IEC 7816-4)</option>
+                    <option value="AnsiX923">AnsiX923 (ANSI X9.23)</option>
+                    <option value="Iso10126">Iso10126 (ISO/IEC 10126)</option>
+                    <option value="ZeroPadding">ZeroPadding</option>
+                    <option value="NoPadding">NoPadding</option>
+                </select>
+            </div>
+            <button type="button" onclick="encrypt()">Encrypt</button>
+            <button type="button" onclick="decrypt()">Decrypt</button>
+        </form>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        // 支持的模式
+        const modes = {
+            CBC: CryptoJS.mode.CBC,
+            CFB: CryptoJS.mode.CFB,
+            CTR: CryptoJS.mode.CTR,
+            OFB: CryptoJS.mode.OFB,
+            ECB: CryptoJS.mode.ECB
+        };
+
+        // 支持的填充方式
+        const paddings = {
+            Pkcs7: CryptoJS.pad.Pkcs7,
+            Iso7816: CryptoJS.pad.Iso7816,
+            AnsiX923: CryptoJS.pad.AnsiX923,
+            Iso10126: CryptoJS.pad.Iso10126,
+            ZeroPadding: CryptoJS.pad.ZeroPadding,
+            NoPadding: CryptoJS.pad.NoPadding
+        };
+
+        /**
+         * AES 加密
+         * @param {string} data - 要加密的数据
+         * @param {string} key - 密钥
+         * @param {string} iv - 偏移量（仅在某些模式下需要）
+         * @param {string} mode - 模式 (CBC, CFB, CTR, OFB, ECB)
+         * @param {string} padding - 填充方式 (PKCS7, Iso79791, AnsiX923, Iso10126, ZeroPadding, NoPadding)
+         * @returns {string} - 加密后的数据
+         */
+        function aesEncrypt(data, key, iv, mode, padding) {
+            const encrypted = CryptoJS.AES.encrypt(data, CryptoJS.enc.Utf8.parse(key), {
+                iv: iv ? CryptoJS.enc.Utf8.parse(iv) : undefined,
+                mode: modes[mode],
+                padding: paddings[padding]
+            });
+            return encrypted.toString();
+        }
+
+        /**
+         * AES 解密
+         * @param {string} data - 要解密的数据
+         * @param {string} key - 密钥
+         * @param {string} iv - 偏移量（仅在某些模式下需要）
+         * @param {string} mode - 模式 (CBC, CFB, CTR, OFB, ECB)
+         * @param {string} padding - 填充方式 (PKCS7, Iso79791, AnsiX923, Iso10126, ZeroPadding, NoPadding)
+         * @returns {string} - 解密后的数据
+         */
+        function aesDecrypt(data, key, iv, mode, padding) {
+            const decrypted = CryptoJS.AES.decrypt(data, CryptoJS.enc.Utf8.parse(key), {
+                iv: iv ? CryptoJS.enc.Utf8.parse(iv) : undefined,
+                mode: modes[mode],
+                padding: paddings[padding]
+            });
+            return decrypted.toString(CryptoJS.enc.Utf8);
+        }
+
+        function encrypt() {
+            const inputData = document.getElementById('inputData').value;
+            const key = document.getElementById('key').value;
+            const iv = document.getElementById('iv').value;
+            const mode = document.getElementById('mode').value;
+            const padding = document.getElementById('padding').value;
+
+            if (!inputData || !key) {
+                alert('Please enter input data and key.');
+                return;
+            }
+
+            if (['CBC', 'CFB', 'CTR', 'OFB'].includes(mode) && !iv) {
+                alert('Please enter IV for the selected mode.');
+                return;
+            }
+
+            try {
+                const encryptedData = aesEncrypt(inputData, key, iv, mode, padding);
+                document.getElementById('outputData').value = encryptedData; // 将加密后的数据填充到输出框
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        function decrypt() {
+            const outputData = document.getElementById('outputData').value;
+            const key = document.getElementById('key').value;
+            const iv = document.getElementById('iv').value;
+            const mode = document.getElementById('mode').value;
+            const padding = document.getElementById('padding').value;
+
+            if (!outputData || !key) {
+                alert('Please enter output data and key.');
+                return;
+            }
+
+            if (['CBC', 'CFB', 'CTR', 'OFB'].includes(mode) && !iv) {
+                alert('Please enter IV for the selected mode.');
+                return;
+            }
+
+            try {
+                const decryptedData = aesDecrypt(outputData, key, iv, mode, padding);
+                document.getElementById('inputData').value = decryptedData; // 将解密后的数据填充到输入框
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
