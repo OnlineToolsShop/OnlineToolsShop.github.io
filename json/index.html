@@ -33,6 +33,15 @@
       right: 150px; /* 在删除按钮的左边，并向右移动50像素 */
       background: blue; /* 恢复蓝色背景 */
     }
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      cursor: s-resize;
+      background-color: #ddd;
+    }
     .add-button-container {
       text-align: center;
       margin: 20px 0;
@@ -141,6 +150,38 @@
       }
 
       const editor = createJsonEditor(editorDiv, initialJson); // 创建 JSONEditor 实例
+
+      // 设置拖动处理
+      let isResizing = false;
+      let startY = 0;
+      let startHeight = 0;
+
+      // 创建可拖动的边框
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'resize-handle';
+      editorContainer.appendChild(resizeHandle);
+
+      resizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = parseInt(window.getComputedStyle(editorDiv).height);
+        document.body.style.userSelect = 'none'; // 禁止文本选择
+      });
+
+      document.addEventListener('mouseup', function(e) {
+        if (!isResizing) return;
+        const diff = e.clientY - startY;
+        const newHeight = startHeight + diff;
+        if (newHeight > 100) { // 最小高度限制
+          const editorDiv = editorContainer.querySelector('.jsoneditor');
+          editorDiv.style.height = `${newHeight}px`;
+          editor.resize()
+          //console.log(`zzzzz -> mousemove ${newHeight}px`);
+        }
+        isResizing = false;
+        document.body.style.userSelect = ''; // 允许文本选择
+      });
+
 
       // 绑定保存按钮的点击事件
       saveButton.onclick = function() {
