@@ -251,7 +251,6 @@
           const editorDiv = editorContainer.querySelector('.jsoneditor');
           editorDiv.style.height = `${newHeight}px`;
           editor.resize();
-          //console.log(`zzzzz -> mousemove ${newHeight}px`);
         }
         isResizing = false;
         document.body.style.userSelect = ''; // 允许文本选择
@@ -261,6 +260,7 @@
       container.appendChild(editorContainer);
     }
 
+    var compareJsonEditorArray = [];
     function createComparisonContainer() {
       const comparisonContainer = document.getElementById('comparison-container');
 
@@ -284,10 +284,13 @@
         if (!isResizing) return;
         const diff = e.clientY - startY;
         const newHeight = startHeight + diff;
-        if (newHeight > 100) {
+        if (newHeight > 256) {
           comparisonContainer.style.height = `${newHeight}px`;
           [...comparisonContainer.querySelectorAll('.jsoneditor')].forEach(editor => {
             editor.style.height = `${newHeight}px`;
+          });
+          compareJsonEditorArray.forEach(e => {
+            e.editor.resize();
           });
         }
         isResizing = false;
@@ -296,20 +299,33 @@
     }
 
     function addComparisonEditor(json, title, editorIndex) {
+      const uniqueId = new Date().getTime(); // 获取当前毫秒
       const comparisonContainer = document.getElementById('comparison-container');
+      // 调整高度
+      if (comparisonContainer.childNodes.length <= 1 && compareJsonEditorArray.length == 0) {
+        comparisonContainer.style.height = '256px';
+      }
       const editorContainer = document.createElement('div');
       editorContainer.id = `jsoneditor${editorIndex}`; /* 使用编辑器的下标作为 ID */
       editorContainer.className = 'jsoneditor';
+      editorContainer.style.flex = '1'; // 让每个编辑器自动分配空间
       comparisonContainer.appendChild(editorContainer);
 
+      // 创建json editor
       const editor = createJsonEditor(editorContainer, json);
-      editorContainer.style.flex = '1'; // 让每个编辑器自动分配空间
+      
+      compareJsonEditorArray.push({
+        "uniqueId"        : uniqueId,
+        "editorIndex"     : editorIndex,
+        "editor"          : editor,
+        "editorContainer" : editorContainer,
+      });
 
       // 创建标题输入框
       const titleInput = document.createElement('input');
       titleInput.type = 'text';
       titleInput.className = 'title-input';
-      titleInput.style = "top: 4px;"
+      titleInput.style = "top:8px;left:448px;font-size:12px;text-align:left;"
       titleInput.placeholder = 'Please enter the title.';
       editorContainer.appendChild(titleInput);
       if (title) {
@@ -322,17 +338,23 @@
       cancelButton.textContent = 'Cancel';
       editorContainer.appendChild(cancelButton);
       cancelButton.onclick = function() {
-        clearComparisons(editorIndex);
+        clearComparisons(uniqueId);
       };
     }
 
-    function clearComparisons(editorIndex) {
+    function clearComparisons(uniqueId) {
       const comparisonContainer = document.getElementById('comparison-container');
-      comparisonContainer.childNodes.forEach((node, index) => {
-        if (node.id == `jsoneditor${editorIndex}`) {
-          comparisonContainer.removeChild(node);
+      for (let index = 0; index < compareJsonEditorArray.length; index++) {
+        const element = compareJsonEditorArray[index];
+        if (element.uniqueId == uniqueId) {
+          comparisonContainer.removeChild(element.editorContainer);
         }
-      })
+      }
+      compareJsonEditorArray = compareJsonEditorArray.filter(element => element.uniqueId != uniqueId);
+      // 调整高度
+      if (comparisonContainer.childNodes.length <= 1 && compareJsonEditorArray.length == 0) {
+        comparisonContainer.style.height = '0px';
+      }
     }
 
     document.getElementById('add-json-editor').onclick = addJsonEditor;
