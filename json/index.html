@@ -7,17 +7,16 @@
   <style>
     .jsoneditor {
       width: 100%;
-      height: 220px;
-      margin-top: 32px;
-      margin-bottom: 20px;
+      height: 256px;
+      margin-bottom: 8px;
     }
     .container {
       position: relative;
-      margin-bottom: 20px;
+      margin-bottom: 8px;
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 8px;
     }
-    .delete-button, .save-button {
+    .delete-button, .save-button, .compare-button, .cancel-button {
       position: absolute;
       top: 14px; /* 向上移动20像素 */
       color: #fff; /* 文本颜色设置为白色 */
@@ -27,22 +26,28 @@
       z-index: 1; /* 确保在上方显示 */
     }
     .delete-button {
-      margin-top: 32px;
       right: 100px; /* 向右移动48像素 */
       background: red; /* 恢复红色背景 */
     }
     .save-button {
-      margin-top: 32px;
       right: 150px; /* 在删除按钮的左边，并向右移动50像素 */
       background: blue; /* 恢复蓝色背景 */
     }
+    .compare-button {
+      right: 200px; /* 在保存按钮的左边，并向右移动50像素 */
+      background: green; /* 设置绿色背景 */
+    }
+    .cancel-button {
+      right: 100px; /* 在比较按钮的左边，并向右移动50像素 */
+      background: gray; /* 设置灰色背景 */
+    }
     .title-input {
       position: absolute;
-      top: 10px; /* 调整顶部位置 */
+      top: 16px; /* 调整顶部位置 */
       left: 50%; /* 水平居中 */
       transform: translateX(-50%); /* 水平居中 */
       background: none; /* 移除背景色 */
-      color: black; /* 输入框文本颜色 */
+      color: white; /* 输入框文本颜色 */
       padding: 5px; /* 内边距 */
       border: 0px solid #ccc; /* 边框 */
       outline: none; /* 移除聚焦边框 */
@@ -73,13 +78,21 @@
       font-size: 24px; /* 调整字体大小 */
       margin-bottom: 20px; /* 增加底部间距 */
     }
+    .comparison-container {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      padding: 8px;
+      position: relative;
+    }
   </style>
 </head>
 <body>
   <h1 class="title">JSON Editor Online</h1>
-
+  <div id="comparison-container" class="comparison-container"></div>
   <div id="editors-container"></div>
-
   <div class="add-button-container">
     <button id="add-json-editor">Add JSON Editor</button>
   </div>
@@ -123,11 +136,24 @@
       const editorContainer = document.createElement('div');
       editorContainer.className = 'container';
 
+      const editorIndex = getEditorCount();
+      const editorDiv = document.createElement('div');
+      editorDiv.id = `jsoneditor${editorIndex}`; /* 使用编辑器的下标作为 ID */
+      editorContainer.appendChild(editorDiv);
+
+      // 从 localStorage 中恢复数据
+      const savedJson = localStorage.getItem(`jsoneditor${editorIndex}`);
+      const savedTitle = localStorage.getItem(`jsoneditorTitle${editorIndex}`);
+
       // 初始化 JSON 编辑器
       let initialJson = {
         "name": "New JSON",
         "data": "Example"
       };
+      if (savedJson) {
+        initialJson = JSON.parse(savedJson);
+      }
+      const editor = createJsonEditor(editorDiv, initialJson); // 创建 JSONEditor 实例
 
       // 创建标题输入框
       const titleInput = document.createElement('input');
@@ -135,6 +161,9 @@
       titleInput.className = 'title-input';
       titleInput.placeholder = 'Please enter the title.';
       editorContainer.appendChild(titleInput);
+      if (savedTitle) {
+        titleInput.value = savedTitle;
+      }
 
       // 创建删除按钮
       const deleteButton = document.createElement('button');
@@ -171,24 +200,31 @@
       saveButton.className = 'save-button';
       saveButton.textContent = 'Save';
       editorContainer.appendChild(saveButton);
+      // 绑定保存按钮的点击事件
+      saveButton.onclick = function() {
+        try {
+          const json = editor.get(); // 获取当前编辑器中的 JSON 数据
+          const title = titleInput.value; // 获取标题
+          localStorage.setItem(`jsoneditor${editorIndex}`, JSON.stringify(json));
+          localStorage.setItem(`jsoneditorTitle${editorIndex}`, title);
+          alert('Success'); // 保存成功提示
+        } catch (error) {
+          console.error('保存失败:', error);
+          alert('Failed'); // 保存失败提示
+        }
+      };
 
-      // 创建 JSON 编辑器容器
-      const editorIndex = getEditorCount(); // 获取当前编辑器的数量
-      const editorDiv = document.createElement('div');
-      editorDiv.id = `jsoneditor${editorIndex}`; /* 使用编辑器的下标作为 ID */
-      editorContainer.appendChild(editorDiv);
-
-      // 从 localStorage 中恢复数据
-      const savedJson = localStorage.getItem(`jsoneditor${editorIndex}`);
-      const savedTitle = localStorage.getItem(`jsoneditorTitle${editorIndex}`);
-      if (savedJson) {
-        initialJson = JSON.parse(savedJson);
-      }
-      if (savedTitle) {
-        titleInput.value = savedTitle;
-      }
-
-      const editor = createJsonEditor(editorDiv, initialJson); // 创建 JSONEditor 实例
+      // 创建对比按钮
+      const compareButton = document.createElement('button');
+      compareButton.className = 'compare-button';
+      compareButton.textContent = 'Compare';
+      editorContainer.appendChild(compareButton);
+      compareButton.onclick = function() {
+        const index = Array.from(container.children).indexOf(editorContainer);
+        const editorDiv = editorContainer.querySelector('.jsoneditor');
+        const json = editor.get();
+        addComparisonEditor(json, titleInput.value, index);
+      };
 
       // 设置拖动处理
       let isResizing = false;
@@ -214,36 +250,94 @@
         if (newHeight > 100) { // 最小高度限制
           const editorDiv = editorContainer.querySelector('.jsoneditor');
           editorDiv.style.height = `${newHeight}px`;
-          editor.resize()
+          editor.resize();
           //console.log(`zzzzz -> mousemove ${newHeight}px`);
         }
         isResizing = false;
         document.body.style.userSelect = ''; // 允许文本选择
       });
 
-      // 绑定保存按钮的点击事件
-      saveButton.onclick = function() {
-        try {
-          const json = editor.get(); // 获取当前编辑器中的 JSON 数据
-          const title = titleInput.value; // 获取标题
-          localStorage.setItem(`jsoneditor${editorIndex}`, JSON.stringify(json));
-          localStorage.setItem(`jsoneditorTitle${editorIndex}`, title);
-          alert('Success'); // 保存成功提示
-        } catch (error) {
-          console.error('保存失败:', error);
-          alert('Failed'); // 保存失败提示
-        }
-      };
-
       // 将新的编辑器容器添加到页面
       container.appendChild(editorContainer);
     }
 
-    // 绑定添加按钮事件
-    document.getElementById('add-json-editor').onclick = addJsonEditor;
+    function createComparisonContainer() {
+      const comparisonContainer = document.getElementById('comparison-container');
 
-    // 初始化第一个 JSON 编辑器
+      // 设置拖动处理
+      let isResizing = false;
+      let startY = 0;
+      let startHeight = 0;
+
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'resize-handle';
+      comparisonContainer.appendChild(resizeHandle);
+
+      resizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = parseInt(window.getComputedStyle(comparisonContainer).height);
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mouseup', function(e) {
+        if (!isResizing) return;
+        const diff = e.clientY - startY;
+        const newHeight = startHeight + diff;
+        if (newHeight > 100) {
+          comparisonContainer.style.height = `${newHeight}px`;
+          [...comparisonContainer.querySelectorAll('.jsoneditor')].forEach(editor => {
+            editor.style.height = `${newHeight}px`;
+          });
+        }
+        isResizing = false;
+        document.body.style.userSelect = '';
+      });
+    }
+
+    function addComparisonEditor(json, title, editorIndex) {
+      const comparisonContainer = document.getElementById('comparison-container');
+      const editorContainer = document.createElement('div');
+      editorContainer.id = `jsoneditor${editorIndex}`; /* 使用编辑器的下标作为 ID */
+      editorContainer.className = 'jsoneditor';
+      comparisonContainer.appendChild(editorContainer);
+
+      const editor = createJsonEditor(editorContainer, json);
+      editorContainer.style.flex = '1'; // 让每个编辑器自动分配空间
+
+      // 创建标题输入框
+      const titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.className = 'title-input';
+      titleInput.style = "top: 4px;"
+      titleInput.placeholder = 'Please enter the title.';
+      editorContainer.appendChild(titleInput);
+      if (title) {
+        titleInput.value = title;
+      }
+      // 创建取消按钮
+      const cancelButton = document.createElement('button');
+      cancelButton.className = 'cancel-button';
+      cancelButton.style = "top: 4px;"
+      cancelButton.textContent = 'Cancel';
+      editorContainer.appendChild(cancelButton);
+      cancelButton.onclick = function() {
+        clearComparisons(editorIndex);
+      };
+    }
+
+    function clearComparisons(editorIndex) {
+      const comparisonContainer = document.getElementById('comparison-container');
+      comparisonContainer.childNodes.forEach((node, index) => {
+        if (node.id == `jsoneditor${editorIndex}`) {
+          comparisonContainer.removeChild(node);
+        }
+      })
+    }
+
+    document.getElementById('add-json-editor').onclick = addJsonEditor;
     addJsonEditor();
+    createComparisonContainer();
   </script>
 </body>
 </html>
