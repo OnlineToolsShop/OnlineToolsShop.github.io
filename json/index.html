@@ -18,6 +18,39 @@
     //   });
     // });
   </script>
+  <script>
+    function trackEngagement() {
+      let startTime = Date.now();
+      let engagementTime = 0;
+
+      function sendEngagement() {
+        engagementTime += Date.now() - startTime;
+        console.log(`停留时间：${engagementTime / 1000} 秒`);
+
+        // gtag('event', 'user_engagement', {
+        //   engagement_time_msec: engagementTime
+        // });
+      }
+
+      window.addEventListener('focus', () => {
+        startTime = Date.now();
+        console.log("WebView 页面获取焦点，开始计时...");
+      });
+
+      window.addEventListener('blur', () => {
+        sendEngagement();
+        console.log("WebView 页面失去焦点，发送 user_engagement");
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        console.log("visibilitychange - ", document.hidden);
+        if (document.hidden) {
+          sendEngagement();
+        }
+      });
+    }
+    trackEngagement();
+  </script>
   <meta charset="UTF-8">
   <title>JSON Editor Online</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.5.4/jsoneditor.min.css">
