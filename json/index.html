@@ -9,6 +9,13 @@
     gtag('js', new Date());
 
     gtag('config', 'G-LD6NTVL2Z3');
+
+
+    window.addEventListener('load', function() {
+      gtag('event', 'user_engagement', {
+        engagement_time_msec: 10000 // 设定 10 秒的交互时间
+      });
+    });
   </script>
   <meta charset="UTF-8">
   <title>JSON Editor Online</title>
